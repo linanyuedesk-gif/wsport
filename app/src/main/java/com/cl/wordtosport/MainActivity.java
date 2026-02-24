@@ -5,6 +5,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -38,6 +41,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
 
+import java.io.IOException;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -55,6 +60,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
+import com.cl.wordtosport.ToneGenerator;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "WordToSport";
@@ -62,10 +69,11 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_FOLDER_URI = "folder_uri";
     private static final String KEY_CURRENT_FILE = "current_file";
     private static final String KEY_MODE = "mode"; // 0: Single, 1: All
-    private static final String KEY_FREQUENCY = "frequency";
+    private static final String KEY_TEMPO = "tempo"; // BPM (beats per minute)
     private static final String KEY_SHOW_TIME = "show_time";
     private static final String KEY_SHOW_COUNT = "show_count";
     private static final String KEY_HISTORY_DATA = "history_data";
+    private static final String KEY_SOUND_ENABLED = "sound_enabled";
 
     // Ebbinghaus intervals in seconds: 5m, 30m, 12h, 1d, 2d, 4d, 7d, 15d
     private static final long[] INTERVALS = {
@@ -88,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable wordSwitcher;
     private Runnable timeUpdater;
+    private Runnable metronomeRunnable; // For metronome beat
 
     private List<WordItem> allWords = new ArrayList<>();
     private List<WordItem> currentFileWords = new ArrayList<>();
@@ -96,12 +105,18 @@ public class MainActivity extends AppCompatActivity {
     private Uri folderUri;
     private String currentFileName;
     private int mode = 0; // 0: Single, 1: All
-    private int frequency = 5; // Seconds
+    private int tempo = 60; // Beats per minute (BPM)
+    private boolean soundEnabled = true; // Whether to play metronome sound
     private boolean showTime = true;
     private boolean showCount = true;
     private int switchCount = 0;
 
     private Random random = new Random();
+    
+    // Sound variables
+    private SoundPool soundPool;
+    private int clickSoundId;
+    private boolean soundPoolReady = false;
 
     private final ActivityResultLauncher<Intent> folderPickerLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -134,13 +149,17 @@ public class MainActivity extends AppCompatActivity {
         tvCount = findViewById(R.id.tvCount);
         rootLayout = findViewById(R.id.rootLayout);
 
+        // Initialize sound system
+        initializeSound();
+
         // Load Settings
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String uriStr = prefs.getString(KEY_FOLDER_URI, null);
         if (uriStr != null) folderUri = Uri.parse(uriStr);
         currentFileName = prefs.getString(KEY_CURRENT_FILE, null);
         mode = prefs.getInt(KEY_MODE, 0);
-        frequency = prefs.getInt(KEY_FREQUENCY, 5);
+        tempo = prefs.getInt(KEY_TEMPO, 60); // Default to 60 BPM
+        soundEnabled = prefs.getBoolean(KEY_SOUND_ENABLED, true);
         showTime = prefs.getBoolean(KEY_SHOW_TIME, true);
         showCount = prefs.getBoolean(KEY_SHOW_COUNT, true);
 
@@ -184,15 +203,34 @@ public class MainActivity extends AppCompatActivity {
         };
         handler.post(timeUpdater);
 
-        // Word Switcher
-        wordSwitcher = new Runnable() {
+        // Metronome Beat
+        startMetronome();
+    }
+    
+    private void startMetronome() {
+        if (metronomeRunnable != null) {
+            handler.removeCallbacks(metronomeRunnable);
+        }
+        
+        metronomeRunnable = new Runnable() {
             @Override
             public void run() {
+                // Play metronome sound
+                playClickSound();
+                
+                // Switch word on each beat
                 switchWord();
-                handler.postDelayed(this, frequency * 1000L);
+                
+                // Schedule next beat based on tempo (BPM)
+                // Convert BPM to milliseconds: 60 seconds / BPM * 1000 ms
+                long interval = (60 * 1000) / tempo;
+                handler.postDelayed(this, interval);
             }
         };
-        handler.postDelayed(wordSwitcher, frequency * 1000L);
+        
+        // Start the metronome
+        long initialInterval = (60 * 1000) / tempo;
+        handler.postDelayed(metronomeRunnable, initialInterval);
     }
 
     private void switchWord() {
@@ -312,13 +350,13 @@ public class MainActivity extends AppCompatActivity {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                sb.append(line);
+                sb.append(line).append("\n"); // Preserve line breaks
             }
             reader.close();
             
-            // Split by ; or ；
+            // Split by ; or ； or \n (newlines)
             String content = sb.toString();
-            String[] tokens = content.split("[;；]");
+            String[] tokens = content.split("[;；\\n\\r]+");
             for (String token : tokens) {
                 if (!token.trim().isEmpty()) {
                     list.add(new WordItem(token.trim(), file.getName()));
@@ -381,19 +419,19 @@ public class MainActivity extends AppCompatActivity {
         spinnerMode.setSelection(mode);
         layout.addView(spinnerMode);
 
-        // Frequency
-        TextView tvFreq = new TextView(this);
-        tvFreq.setText("Frequency: " + frequency + "s");
-        layout.addView(tvFreq);
+        // Tempo (Metronome)
+        TextView tvTempo = new TextView(this);
+        tvTempo.setText("Tempo: " + tempo + " BPM");
+        layout.addView(tvTempo);
         
         SeekBar seekBar = new SeekBar(this);
-        seekBar.setMax(60);
-        seekBar.setProgress(frequency);
+        seekBar.setMax(240); // Max 240 BPM
+        seekBar.setProgress(tempo);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (progress < 1) progress = 1;
-                tvFreq.setText("Frequency: " + progress + "s");
+                tvTempo.setText("Tempo: " + progress + " BPM");
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
@@ -401,6 +439,11 @@ public class MainActivity extends AppCompatActivity {
         layout.addView(seekBar);
 
         // Toggles
+        CheckBox cbSound = new CheckBox(this);
+        cbSound.setText("Sound Enabled");
+        cbSound.setChecked(soundEnabled);
+        layout.addView(cbSound);
+
         CheckBox cbTime = new CheckBox(this);
         cbTime.setText("Show Time");
         cbTime.setChecked(showTime);
@@ -415,7 +458,8 @@ public class MainActivity extends AppCompatActivity {
 
         builder.setPositiveButton("Save", (dialog, which) -> {
             // Save Settings
-            frequency = Math.max(1, seekBar.getProgress());
+            tempo = Math.max(1, seekBar.getProgress()); // Tempo in BPM
+            soundEnabled = cbSound.isChecked();
             showTime = cbTime.isChecked();
             showCount = cbCount.isChecked();
             mode = spinnerMode.getSelectedItemPosition();
@@ -424,7 +468,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
-            editor.putInt(KEY_FREQUENCY, frequency);
+            editor.putInt(KEY_TEMPO, tempo);
+            editor.putBoolean(KEY_SOUND_ENABLED, soundEnabled);
             editor.putBoolean(KEY_SHOW_TIME, showTime);
             editor.putBoolean(KEY_SHOW_COUNT, showCount);
             editor.putInt(KEY_MODE, mode);
@@ -436,9 +481,9 @@ public class MainActivity extends AppCompatActivity {
             // Reload words if file changed
             if (folderUri != null) loadFilesFromFolder(folderUri);
             
-            // Restart timer
-            handler.removeCallbacks(wordSwitcher);
-            handler.postDelayed(wordSwitcher, frequency * 1000L);
+            // Restart metronome with new tempo
+            handler.removeCallbacks(metronomeRunnable);
+            startMetronome();
         });
 
         builder.setNegativeButton("Cancel", null);
@@ -505,6 +550,49 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void initializeSound() {
+        // Initialize SoundPool for Android API 21+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SON)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+            
+            soundPool = new SoundPool.Builder()
+                    .setMaxStreams(1)
+                    .setAudioAttributes(audioAttributes)
+                    .build();
+        } else {
+            // For older versions
+            soundPool = new SoundPool(1, AudioManager.STREAM_MUSIC, 0);
+        }
+        
+        // Generate a simple click sound using audio tone generation
+        // This is a basic implementation - in a real app, you'd load a sound file
+        generateClickSound();
+    }
+    
+    private void generateClickSound() {
+        // In a real implementation, you would load an actual sound file from res/raw
+        // For now, we'll just mark the sound system as ready
+        soundPoolReady = true;
+    }
+    
+    private void playClickSound() {
+        if (soundEnabled && soundPoolReady) {
+            // Play a short beep sound
+            new Thread(() -> ToneGenerator.playTone(100)).start(); // 100ms beep
+            
+            // For visual feedback, briefly change the background color
+            runOnUiThread(() -> {
+                rootLayout.setBackgroundColor(Color.parseColor("#33FFFFFF")); // Light gray
+                handler.postDelayed(() -> {
+                    rootLayout.setBackgroundColor(Color.BLACK); // Reset to black
+                }, 50);
+            });
+        }
+    }
+    
     private void hideSystemUI() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             final Window window = getWindow();
