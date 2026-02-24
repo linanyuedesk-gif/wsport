@@ -13,22 +13,17 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.DocumentsContract;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -306,43 +301,49 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadFilesFromFolder(Uri uri) {
         // In a real app, this should be async
-        new Thread(() -> {
-            allWords.clear();
-            currentFileWords.clear();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                allWords.clear();
+                currentFileWords.clear();
 
-            DocumentFile dir = DocumentFile.fromTreeUri(this, uri);
-            if (dir != null && dir.isDirectory()) {
-                for (DocumentFile file : dir.listFiles()) {
-                    if (file.getName() != null && file.getName().endsWith(".txt")) {
-                        List<WordItem> fileWords = parseFile(file);
-                        allWords.addAll(fileWords);
-                        if (currentFileName != null && file.getName().equals(currentFileName)) {
-                            currentFileWords.addAll(fileWords);
+                DocumentFile dir = DocumentFile.fromTreeUri(MainActivity.this, uri);
+                if (dir != null && dir.isDirectory()) {
+                    for (DocumentFile file : dir.listFiles()) {
+                        if (file.getName() != null && file.getName().endsWith(".txt")) {
+                            List<WordItem> fileWords = parseFile(file);
+                            allWords.addAll(fileWords);
+                            if (currentFileName != null && file.getName().equals(currentFileName)) {
+                                currentFileWords.addAll(fileWords);
+                            }
                         }
                     }
                 }
-            }
-            
-            // If current file not found or not set, default to first
-            if (currentFileWords.isEmpty() && !allWords.isEmpty()) {
-                 // Try to find a file
-                 if (dir != null) {
-                     for (DocumentFile file : dir.listFiles()) {
-                         if (file.getName().endsWith(".txt")) {
-                             currentFileName = file.getName();
-                             getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                                     .edit().putString(KEY_CURRENT_FILE, currentFileName).apply();
-                             currentFileWords.addAll(parseFile(file));
-                             break;
+                
+                // If current file not found or not set, default to first
+                if (currentFileWords.isEmpty() && !allWords.isEmpty()) {
+                     // Try to find a file
+                     if (dir != null) {
+                         for (DocumentFile file : dir.listFiles()) {
+                             if (file.getName().endsWith(".txt")) {
+                                 currentFileName = file.getName();
+                                 getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                                         .edit().putString(KEY_CURRENT_FILE, currentFileName).apply();
+                                 currentFileWords.addAll(parseFile(file));
+                                 break;
+                             }
                          }
                      }
-                 }
-            }
+                }
 
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Loaded " + allWords.size() + " words", Toast.LENGTH_SHORT).show();
-                switchWord(); // Show first word immediately
-            });
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "Loaded " + allWords.size() + " words", Toast.LENGTH_SHORT).show();
+                        switchWord(); // Show first word immediately
+                    }
+                });
+            }
         }).start();
     }
 
@@ -383,9 +384,12 @@ public class MainActivity extends AppCompatActivity {
         // Folder Selection
         Button btnFolder = new Button(this);
         btnFolder.setText("Select Folder");
-        btnFolder.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            startActivityForResult(intent, FOLDER_PICKER_REQUEST_CODE);
+        btnFolder.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                startActivityForResult(intent, FOLDER_PICKER_REQUEST_CODE);
+            }
         });
         layout.addView(btnFolder);
 
@@ -463,34 +467,37 @@ public class MainActivity extends AppCompatActivity {
 
         builder.setView(layout);
 
-        builder.setPositiveButton("Save", (dialog, which) -> {
-            // Save Settings
-            tempo = Math.max(1, seekBar.getProgress()); // Tempo in BPM
-            soundEnabled = cbSound.isChecked();
-            showTime = cbTime.isChecked();
-            showCount = cbCount.isChecked();
-            mode = spinnerMode.getSelectedItemPosition();
-            if (spinnerFile.getSelectedItem() != null) {
-                currentFileName = spinnerFile.getSelectedItem().toString();
+        builder.setPositiveButton("Save", new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                // Save Settings
+                tempo = Math.max(1, seekBar.getProgress()); // Tempo in BPM
+                soundEnabled = cbSound.isChecked();
+                showTime = cbTime.isChecked();
+                showCount = cbCount.isChecked();
+                mode = spinnerMode.getSelectedItemPosition();
+                if (spinnerFile.getSelectedItem() != null) {
+                    currentFileName = spinnerFile.getSelectedItem().toString();
+                }
+
+                SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
+                editor.putInt(KEY_TEMPO, tempo);
+                editor.putBoolean(KEY_SOUND_ENABLED, soundEnabled);
+                editor.putBoolean(KEY_SHOW_TIME, showTime);
+                editor.putBoolean(KEY_SHOW_COUNT, showCount);
+                editor.putInt(KEY_MODE, mode);
+                editor.putString(KEY_CURRENT_FILE, currentFileName);
+                editor.apply();
+
+                updateVisibility();
+                
+                // Reload words if file changed
+                if (folderUri != null) loadFilesFromFolder(folderUri);
+                
+                // Restart metronome with new tempo
+                handler.removeCallbacks(metronomeRunnable);
+                startMetronome();
             }
-
-            SharedPreferences.Editor editor = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
-            editor.putInt(KEY_TEMPO, tempo);
-            editor.putBoolean(KEY_SOUND_ENABLED, soundEnabled);
-            editor.putBoolean(KEY_SHOW_TIME, showTime);
-            editor.putBoolean(KEY_SHOW_COUNT, showCount);
-            editor.putInt(KEY_MODE, mode);
-            editor.putString(KEY_CURRENT_FILE, currentFileName);
-            editor.apply();
-
-            updateVisibility();
-            
-            // Reload words if file changed
-            if (folderUri != null) loadFilesFromFolder(folderUri);
-            
-            // Restart metronome with new tempo
-            handler.removeCallbacks(metronomeRunnable);
-            startMetronome();
         });
 
         builder.setNegativeButton("Cancel", null);
@@ -636,8 +643,8 @@ public class MainActivity extends AppCompatActivity {
                 controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
                 
                 // Make content draw behind the status bar and navigation bar
-                window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
-                window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+                window.setStatusBarColor(Color.TRANSPARENT);
+                window.setNavigationBarColor(Color.TRANSPARENT);
             }
         } else {
             // Legacy approach
