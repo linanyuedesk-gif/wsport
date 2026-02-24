@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Main Word Display -->
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/tvWord"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:textColor="#FFFFFF"
+        android:textSize="100sp"
+        android:maxLines="1"
+        app:autoSizeTextType="uniform"
+        app:autoSizeMinTextSize="12sp"
+        app:autoSizeMaxTextSize="200sp"
+        app:autoSizeStepGranularity="2sp"
+        android:padding="32dp"
+        android:text="Double tap to set up" />
+
+    <!-- Time Display (Top Right) -->
+    <TextView
+        android:id="@+id/tvTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:padding="16dp"
+        android:textColor="#88FFFFFF"
+        android:textSize="24sp"
+        android:text="00:00:00" />
+
+    <!-- Count Display (Top Left) -->
+    <TextView
+        android:id="@+id/tvCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:padding="16dp"
+        android:textColor="#88FFFFFF"
+        android:textSize="24sp"
+        android:text="Count: 0" />
+
+</FrameLayout>

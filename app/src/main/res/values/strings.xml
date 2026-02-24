@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">WordToSport</string>
+    <string name="config_title">Settings</string>
+    <string name="btn_local">Select Folder</string>
+    <string name="btn_url">Load URL</string>
+    <string name="url_hint">Image URL (https://...)</string>
+    <string name="msg_load_error">Failed to load</string>
+    <string name="permission_rationale">Storage permission is required.</string>
+    <string name="history_title">History</string>
+    <string name="history_empty">No recent files</string>
+    <string name="btn_scan">Scan</string>
+    <string name="msg_scanning">Scanning...</string>
+    <string name="msg_scan_complete">Found %d files</string>
+    <string name="msg_no_images">No files found</string>
+    <string name="instruction">Double tap to open settings</string>
+</resources>
