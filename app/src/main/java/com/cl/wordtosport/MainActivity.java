@@ -180,6 +180,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Initial full screen setup
+        hideSystemUI();
+
         startTimers();
 
         if (folderUri != null) {
@@ -546,7 +549,8 @@ public class MainActivity extends AppCompatActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
-            hideSystemUI();
+            // Delay to ensure UI is fully loaded before hiding system bars
+            handler.postDelayed(this::hideSystemUI, 100);
         }
     }
 
@@ -583,12 +587,19 @@ public class MainActivity extends AppCompatActivity {
             // Play a short beep sound
             new Thread(() -> ToneGenerator.playTone(100)).start(); // 100ms beep
             
-            // For visual feedback, briefly change the background color
+            // For visual feedback, briefly change the background color with animation
             runOnUiThread(() -> {
-                rootLayout.setBackgroundColor(Color.parseColor("#33FFFFFF")); // Light gray
-                handler.postDelayed(() -> {
-                    rootLayout.setBackgroundColor(Color.BLACK); // Reset to black
-                }, 50);
+                // Create a subtle pulsing effect
+                rootLayout.animate()
+                    .alpha(0.8f)
+                    .setDuration(50)
+                    .withEndAction(() -> {
+                        rootLayout.animate()
+                            .alpha(1.0f)
+                            .setDuration(100)
+                            .start();
+                    })
+                    .start();
             });
         }
     }
@@ -599,12 +610,19 @@ public class MainActivity extends AppCompatActivity {
             window.setDecorFitsSystemWindows(false);
             WindowInsetsController controller = window.getInsetsController();
             if (controller != null) {
+                // Hide status bar and navigation bar
                 controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                // Allow bars to show when user swipes from edge
                 controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                
+                // Make content draw behind the status bar and navigation bar
+                window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
+                window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
             }
         } else {
-            // Legacy
-            getWindow().getDecorView().setSystemUiVisibility(
+            // Legacy approach
+            View decorView = getWindow().getDecorView();
+            decorView.setSystemUiVisibility(
                     View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                     | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
