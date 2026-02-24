@@ -119,21 +119,25 @@ public class MainActivity extends AppCompatActivity {
     private boolean soundPoolReady = false;
 
     private final ActivityResultLauncher<Intent> folderPickerLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Uri uri = result.getData().getData();
-                    if (uri != null) {
-                        try {
-                            getContentResolver().takePersistableUriPermission(uri,
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                        } catch (SecurityException e) {
-                            Log.w(TAG, "Failed to take permission: " + e.getMessage());
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                    new ActivityResultContracts.StartActivityForResult.ActivityResultCallback() {
+                        @Override
+                        public void onActivityResult(ActivityResult result) {
+                            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                                Uri uri = result.getData().getData();
+                                if (uri != null) {
+                                    try {
+                                        getContentResolver().takePersistableUriPermission(uri,
+                                                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                                    } catch (SecurityException e) {
+                                        Log.w(TAG, "Failed to take permission: " + e.getMessage());
+                                    }
+                                    saveFolderUri(uri);
+                                    loadFilesFromFolder(uri);
+                                }
+                            }
                         }
-                        saveFolderUri(uri);
-                        loadFilesFromFolder(uri);
-                    }
-                }
-            });
+                    });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
