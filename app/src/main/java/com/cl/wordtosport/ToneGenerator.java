@@ -28,17 +28,19 @@ public class ToneGenerator {
         }
 
         // Play the sound
-        AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
-            SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
-            AudioFormat.ENCODING_PCM_16BIT, generatedSound.length, 
-            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M ? 
-            AudioTrack.MODE_STATIC : AudioTrack.MODE_STREAM);
+        AudioTrack audioTrack;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
+                SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
+                AudioFormat.ENCODING_PCM_16BIT, generatedSound.length, 
+                AudioTrack.MODE_STATIC);
+        } else {
+            audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
+                SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
+                AudioFormat.ENCODING_PCM_16BIT, generatedSound.length);
+        }
         
         audioTrack.write(generatedSound, 0, generatedSound.length);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            audioTrack.play();
-        } else {
-            audioTrack.play();
-        }
+        audioTrack.play();
     }
 }
