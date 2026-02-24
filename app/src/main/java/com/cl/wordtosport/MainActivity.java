@@ -34,6 +34,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -120,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final ActivityResultLauncher<Intent> folderPickerLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
-                    new ActivityResultContracts.StartActivityForResult.ActivityResultCallback() {
+                    new ActivityResultContracts.StartActivityForResult.ActivityResultCallback<ActivityResult>() {
                         @Override
                         public void onActivityResult(ActivityResult result) {
                             if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
