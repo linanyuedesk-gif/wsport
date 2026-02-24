@@ -34,10 +34,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
@@ -119,26 +115,7 @@ public class MainActivity extends AppCompatActivity {
     private int clickSoundId;
     private boolean soundPoolReady = false;
 
-    private final ActivityResultLauncher<Intent> folderPickerLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
-                    new ActivityResultContracts.StartActivityForResult.ActivityResultCallback<ActivityResult>() {
-                        @Override
-                        public void onActivityResult(ActivityResult result) {
-                            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                                Uri uri = result.getData().getData();
-                                if (uri != null) {
-                                    try {
-                                        getContentResolver().takePersistableUriPermission(uri,
-                                                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                                    } catch (SecurityException e) {
-                                        Log.w(TAG, "Failed to take permission: " + e.getMessage());
-                                    }
-                                    saveFolderUri(uri);
-                                    loadFilesFromFolder(uri);
-                                }
-                            }
-                        }
-                    });
+    private static final int FOLDER_PICKER_REQUEST_CODE = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -194,6 +171,25 @@ public class MainActivity extends AppCompatActivity {
             loadFilesFromFolder(folderUri);
         } else {
             tvWord.setText("Double tap to select folder");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == FOLDER_PICKER_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                try {
+                    getContentResolver().takePersistableUriPermission(uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                } catch (SecurityException e) {
+                    Log.w(TAG, "Failed to take permission: " + e.getMessage());
+                }
+                saveFolderUri(uri);
+                loadFilesFromFolder(uri);
+            }
         }
     }
 
@@ -387,7 +383,10 @@ public class MainActivity extends AppCompatActivity {
         // Folder Selection
         Button btnFolder = new Button(this);
         btnFolder.setText("Select Folder");
-        btnFolder.setOnClickListener(v -> folderPickerLauncher.launch(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)));
+        btnFolder.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            startActivityForResult(intent, FOLDER_PICKER_REQUEST_CODE);
+        });
         layout.addView(btnFolder);
 
         // File Selection (Spinner)
@@ -531,7 +530,7 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
-
+    
     private void saveWordStates() {
         JSONObject obj = new JSONObject();
         try {
