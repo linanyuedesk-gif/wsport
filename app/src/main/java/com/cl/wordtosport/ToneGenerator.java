@@ -31,9 +31,14 @@ public class ToneGenerator {
         AudioTrack audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
             SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
             AudioFormat.ENCODING_PCM_16BIT, generatedSound.length, 
-            AudioTrack.MODE_STATIC);
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M ? 
+            AudioTrack.MODE_STATIC : AudioTrack.MODE_STREAM);
         
         audioTrack.write(generatedSound, 0, generatedSound.length);
-        audioTrack.play();
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            audioTrack.play();
+        } else {
+            audioTrack.play();
+        }
     }
 }

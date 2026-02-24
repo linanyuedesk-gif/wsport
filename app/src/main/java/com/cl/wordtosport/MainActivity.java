@@ -550,7 +550,12 @@ public class MainActivity extends AppCompatActivity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             // Delay to ensure UI is fully loaded before hiding system bars
-            handler.postDelayed(this::hideSystemUI, 100);
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    hideSystemUI();
+                }
+            }, 100);
         }
     }
 
@@ -585,21 +590,32 @@ public class MainActivity extends AppCompatActivity {
     private void playClickSound() {
         if (soundEnabled && soundPoolReady) {
             // Play a short beep sound
-            new Thread(() -> ToneGenerator.playTone(100)).start(); // 100ms beep
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    ToneGenerator.playTone(100); // 100ms beep
+                }
+            }).start();
             
             // For visual feedback, briefly change the background color with animation
-            runOnUiThread(() -> {
-                // Create a subtle pulsing effect
-                rootLayout.animate()
-                    .alpha(0.8f)
-                    .setDuration(50)
-                    .withEndAction(() -> {
-                        rootLayout.animate()
-                            .alpha(1.0f)
-                            .setDuration(100)
-                            .start();
-                    })
-                    .start();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    // Create a subtle pulsing effect
+                    rootLayout.animate()
+                        .alpha(0.8f)
+                        .setDuration(50)
+                        .withEndAction(new Runnable() {
+                            @Override
+                            public void run() {
+                                rootLayout.animate()
+                                    .alpha(1.0f)
+                                    .setDuration(100)
+                                    .start();
+                            }
+                        })
+                        .start();
+                }
             });
         }
     }
