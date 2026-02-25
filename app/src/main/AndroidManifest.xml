@@ -17,7 +17,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="sensorLandscape|sensorPortrait"
+            android:screenOrientation="fullSensor"
             android:immersive="true"
             android:configChanges="orientation|screenSize|layoutDirection">
             <intent-filter>
