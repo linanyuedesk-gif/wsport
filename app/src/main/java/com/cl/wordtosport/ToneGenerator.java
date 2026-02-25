@@ -37,29 +37,18 @@ public class ToneGenerator {
             }
 
             // Play the sound
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build();
-                AudioFormat audioFormat = new AudioFormat.Builder()
-                    .setSampleRate(SAMPLE_RATE)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .build();
-                audioTrack = new AudioTrack(audioAttributes, audioFormat, 
-                    generatedSound.length, AudioTrack.MODE_STATIC, 
-                    AudioManager.AUDIO_SESSION_ID_GENERATE);
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
-                    SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
-                    AudioFormat.ENCODING_PCM_16BIT, generatedSound.length, 
-                    AudioTrack.MODE_STATIC);
-            } else {
-                audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
-                    SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
-                    AudioFormat.ENCODING_PCM_16BIT, generatedSound.length);
-            }
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+            AudioFormat audioFormat = new AudioFormat.Builder()
+                .setSampleRate(SAMPLE_RATE)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .build();
+            audioTrack = new AudioTrack(audioAttributes, audioFormat, 
+                generatedSound.length, AudioTrack.MODE_STATIC, 
+                AudioManager.AUDIO_SESSION_ID_GENERATE);
             
             if (audioTrack != null && audioTrack.getState() == AudioTrack.STATE_INITIALIZED) {
                 audioTrack.write(generatedSound, 0, generatedSound.length);
