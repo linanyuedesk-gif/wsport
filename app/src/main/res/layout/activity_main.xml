@@ -35,8 +35,8 @@
         android:shadowDy="3"
         android:shadowRadius="4" />
 
-    <!-- Time Display (Top Right) with Material Style -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Time Display (Top Right) with CardView Style -->
+    <androidx.cardview.widget.CardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
@@ -57,10 +57,10 @@
             android:textStyle="bold"
             android:fontFamily="monospace"
             android:text="00:00:00" />
-    </com.google.android.material.card.MaterialCardView>
+    </androidx.cardview.widget.CardView>
 
-    <!-- Count Display (Top Left) with Material Style -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- Count Display (Top Left) with CardView Style -->
+    <androidx.cardview.widget.CardView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
@@ -81,6 +81,6 @@
             android:textStyle="bold"
             android:fontFamily="monospace"
             android:text="0 / 0" />
-    </com.google.android.material.card.MaterialCardView>
+    </androidx.cardview.widget.CardView>
 
 </FrameLayout>
