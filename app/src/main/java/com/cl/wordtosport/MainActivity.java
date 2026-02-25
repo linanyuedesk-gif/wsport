@@ -717,6 +717,14 @@ public class MainActivity extends AppCompatActivity {
         // Restore immersive mode on resume
         hideSystemUI();
     }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Handle orientation changes without restarting activity
+        hideSystemUI();
+    }
+
     // Helper Classes
     private static class WordItem {
         String text;
