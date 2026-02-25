@@ -66,6 +66,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_SHOW_COUNT = "show_count";
     private static final String KEY_HISTORY_DATA = "history_data";
     private static final String KEY_SOUND_ENABLED = "sound_enabled";
+    private static final String KEY_CURRENT_WORD_INDEX = "current_word_index";
+    private static final String KEY_ELAPSED_TIME = "elapsed_time";
+    private static final String KEY_SWITCH_COUNT = "switch_count_saved";
+    private static final String KEY_WINDOW_BRIGHTNESS = "window_brightness";
 
     // Ebbinghaus intervals in seconds: 5m, 30m, 12h, 1d, 2d, 4d, 7d, 15d
     private static final long[] INTERVALS = {
@@ -102,6 +106,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean showTime = true;
     private boolean showCount = true;
     private int switchCount = 0;
+    private int currentWordIndex = 0; // Current selected word index
+    private long sessionStartTime = 0; // Session start time for memory
 
     private Random random = new Random();
     
@@ -118,6 +124,18 @@ public class MainActivity extends AppCompatActivity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        
+        // Hide system UI for immersive experience
+        View decorView = getWindow().getDecorView();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            decorView.getWindowInsetsController().hide(WindowInsets.Type.systemBars());
+        } else {
+            decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+        }
 
         setContentView(R.layout.activity_main);
 
@@ -129,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
         // Initialize sound system
         initializeSound();
 
-        // Load Settings
+        // Load Settings and restore state
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String uriStr = prefs.getString(KEY_FOLDER_URI, null);
         if (uriStr != null) folderUri = Uri.parse(uriStr);
@@ -139,6 +157,9 @@ public class MainActivity extends AppCompatActivity {
         soundEnabled = prefs.getBoolean(KEY_SOUND_ENABLED, true);
         showTime = prefs.getBoolean(KEY_SHOW_TIME, true);
         showCount = prefs.getBoolean(KEY_SHOW_COUNT, true);
+        currentWordIndex = prefs.getInt(KEY_CURRENT_WORD_INDEX, 0); // Restore word index
+        switchCount = prefs.getInt(KEY_SWITCH_COUNT, 0); // Restore switch count
+        sessionStartTime = prefs.getLong(KEY_ELAPSED_TIME, System.currentTimeMillis());
 
         loadWordStates();
 
@@ -263,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
             
             switchCount++;
             if (showCount) {
-                tvCount.setText("Count: " + switchCount);
+                tvCount.setText(switchCount + " / " + currentFileWords.size());
             }
             
             saveWordStates(); // Persist occasionally? For now every time to be safe
@@ -507,6 +528,12 @@ public class MainActivity extends AppCompatActivity {
     private void updateVisibility() {
         tvTime.setVisibility(showTime ? View.VISIBLE : View.GONE);
         tvCount.setVisibility(showCount ? View.VISIBLE : View.GONE);
+        
+        // Update count display with better formatting
+        if (showCount && currentFileWords != null) {
+            String countText = switchCount + " / " + currentFileWords.size();
+            tvCount.setText(countText);
+        }
     }
 
     private void saveFolderUri(Uri uri) {
@@ -659,6 +686,37 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Save state to SharedPreferences
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        
+        if (folderUri != null) {
+            editor.putString(KEY_FOLDER_URI, folderUri.toString());
+        }
+        if (currentFileName != null) {
+            editor.putString(KEY_CURRENT_FILE, currentFileName);
+        }
+        
+        editor.putInt(KEY_MODE, mode);
+        editor.putInt(KEY_TEMPO, tempo);
+        editor.putBoolean(KEY_SOUND_ENABLED, soundEnabled);
+        editor.putBoolean(KEY_SHOW_TIME, showTime);
+        editor.putBoolean(KEY_SHOW_COUNT, showCount);
+        editor.putInt(KEY_CURRENT_WORD_INDEX, currentWordIndex); // Save word index
+        editor.putInt(KEY_SWITCH_COUNT, switchCount); // Save switch count
+        editor.putLong(KEY_ELAPSED_TIME, sessionStartTime); // Save session time
+        editor.apply();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Restore immersive mode on resume
+        hideSystemUI();
+    }
     // Helper Classes
     private static class WordItem {
         String text;
