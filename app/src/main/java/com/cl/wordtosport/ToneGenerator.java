@@ -1,5 +1,6 @@
 package com.cl.wordtosport;
 
+import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -30,7 +31,20 @@ public class ToneGenerator {
 
         // Play the sound
         AudioTrack audioTrack;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+            AudioFormat audioFormat = new AudioFormat.Builder()
+                .setSampleRate(SAMPLE_RATE)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .build();
+            audioTrack = new AudioTrack(audioAttributes, audioFormat, 
+                generatedSound.length, AudioTrack.MODE_STATIC, 
+                AudioManager.AUDIO_SESSION_ID_GENERATE);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, 
                 SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, 
                 AudioFormat.ENCODING_PCM_16BIT, generatedSound.length, 
